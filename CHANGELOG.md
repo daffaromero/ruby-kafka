@@ -4,6 +4,8 @@ Changes and additions to the library will be listed here.
 
 ## Unreleased
 
+- Raise `Kafka::CodecUnavailable`, naming the topic and partition, when a fetched batch uses a compression codec whose gem isn't installed. Previously the `LoadError` aborted the consumer process from the fetcher thread.
+
 ## 1.5.1
 - Add deprecation notice.
 

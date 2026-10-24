@@ -172,6 +172,15 @@ describe Kafka::Protocol::FetchResponse do
           expect(record_batch.records.first.key).to eql('hello')
           expect(record_batch.records.first.value).to eql('world')
         end
+
+        it 'names the topic and partition when the codec is unavailable' do
+          allow(Kafka::Protocol::RecordBatch).to receive(:decode)
+            .and_raise(Kafka::CodecUnavailable, "snappy gem missing")
+
+          expect {
+            ::Kafka::Protocol::FetchResponse.decode(decoder)
+          }.to raise_error(Kafka::CodecUnavailable, "snappy gem missing (topic hello, partition 0)")
+        end
       end
 
       context 'multiple full record batch' do

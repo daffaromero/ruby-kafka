@@ -17,4 +17,15 @@ describe Kafka::Compression do
       end
     end
   end
+
+  describe ".find_codec_by_id" do
+    it "raises a Kafka::Error when the codec's gem can't be loaded" do
+      codec = Kafka::Compression::CODECS_BY_NAME.fetch(:snappy)
+      allow(codec).to receive(:load).and_raise(LoadError, "snappy gem missing")
+
+      expect {
+        Kafka::Compression.find_codec_by_id(codec.codec_id)
+      }.to raise_error(Kafka::CodecUnavailable, "snappy gem missing")
+    end
+  end
 end
