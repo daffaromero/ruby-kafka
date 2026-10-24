@@ -173,13 +173,18 @@ describe Kafka::Protocol::FetchResponse do
           expect(record_batch.records.first.value).to eql('world')
         end
 
-        it 'names the topic and partition when the codec is unavailable' do
-          allow(Kafka::Protocol::RecordBatch).to receive(:decode)
-            .and_raise(Kafka::CodecUnavailable, "snappy gem missing")
+        context 'compressed with a codec whose gem is missing' do
+          # Codec id 2 (snappy) in the low bits of the batch attributes.
+          let(:first_record) { super().dup.tap { |bytes| bytes[22] = 0x02 } }
 
-          expect {
-            ::Kafka::Protocol::FetchResponse.decode(decoder)
-          }.to raise_error(Kafka::CodecUnavailable, "snappy gem missing (topic hello, partition 0)")
+          it 'raises CodecUnavailable naming the topic and partition' do
+            snappy = Kafka::Compression::CODECS_BY_NAME.fetch(:snappy)
+            allow(snappy).to receive(:load).and_raise(LoadError, "snappy gem missing")
+
+            expect {
+              ::Kafka::Protocol::FetchResponse.decode(decoder)
+            }.to raise_error(Kafka::CodecUnavailable, "snappy gem missing (topic hello, partition 0)")
+          end
         end
       end
 
@@ -385,6 +390,20 @@ describe Kafka::Protocol::FetchResponse do
         message_set = partition.messages.first
         expect(message_set.messages[0]).to be_a(::Kafka::Protocol::Message)
         expect(message_set.messages[0].value).to eql('hello')
+      end
+
+      context 'compressed with a codec whose gem is missing' do
+        # Codec id 2 (snappy) in the low bits of the message attributes.
+        let(:message) { super().dup.tap { |bytes| bytes[17] = 0x02 } }
+
+        it 'raises CodecUnavailable naming the topic and partition' do
+          snappy = Kafka::Compression::CODECS_BY_NAME.fetch(:snappy)
+          allow(snappy).to receive(:load).and_raise(LoadError, "snappy gem missing")
+
+          expect {
+            ::Kafka::Protocol::FetchResponse.decode(decoder)
+          }.to raise_error(Kafka::CodecUnavailable, "snappy gem missing (topic hello, partition 0)")
+        end
       end
     end
   end
